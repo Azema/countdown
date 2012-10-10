@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr" xml:lang="fr">
+<head>
+  <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8" />
+  <title>CountDown</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+  <script src="cookies.js"></script>
+</head>
+<body>
+  <form>
+    <input id="date" type="date" name="myDate" title="Date (jj-mm-aaaa)"
+    value="2012-10-10"
+    required="required" autofocus="autofocus" />
+    <input id="time" type="time" name="myTime" title="Time (hh:mn)" value="14:30"
+    required="required" placeholder="08:15" step="15" />
+    <input id="btnStart" type="button" value="Lancer" />
+    <input id="btnStop" type="button" value="Arreter" />
+  </form>
+  <span id="formDisplay" style="cursor:pointer;">&#x2191;</span>
+  <div id="countdown" style="font-size:7em;text-align:center;font-weight:bold;display:none;line-height:5px;">
+    <p>Fin du sprint dans :</p>
+    <span style="font-size:1em;"></span>
+  </div>
+</body>
+<script type="text/javascript">
+  var debug = false;
+  var deadline;
+  var timeoutId;
+  var $fDate = $('#date');
+  var $fTime = $('#time');
+  var $fBtnStart = $('#btnStart');
+  var $fBtnStop = $('#btnStop');
+  var minute = 60;
+  var hour = minute * 60;
+  var day = hour * 24;
+  var week = day * 7;
+
+  $('#formDisplay').click(function(event) {
+    var $form = $(document.forms[0]);
+    if ($form.is(':hidden')) {
+      $form.css('display', 'inline');
+      $(this).html('&#x2191;');
+    } else {
+      $form.hide();
+      $(this).html('&#x2193;');
+    }
+  });
+
+  if (allCookies.hasItem('deadline')) {
+    deadline = new Date(allCookies.getItem('deadline'));
+    $('#formDisplay').trigger('click');
+    calculateTime();
+  }
+
+  $fBtnStart.click(function(event) {
+      event.preventDefault();
+      deadline = new Date(stringToDate($fDate, $fTime));
+      if (debug) console.log(deadline);
+      allCookies.setItem('deadline', deadline.toGMTString(), Infinity);
+      if (debug) console.log(allCookies.hasItem('deadline'));
+      if (debug) console.log('cookie: '+allCookies.getItem('deadline'));
+      calculateTime();
+  });
+
+  $fBtnStop.click(function(event) {
+      event.preventDefault();
+      window.clearTimeout(timeoutId);
+      allCookies.removeItem('deadline');
+  });
+
+  function calculateTime() {
+    $('#countdown').hide();
+    var result = countdown(deadline);
+    $('#countdown span').html(result);
+    $('#countdown').show();
+  }
+
+  function stringToDate($fDate, $fTime) {
+    var splitDate = $fDate.val().split('-');
+    if (debug) console.log(splitDate);
+    var splitTime = $fTime.val().split(':');
+    if (debug) console.log(splitTime);
+    return new Date(parseInt(splitDate[0],10), parseInt(splitDate[1],10) - 1,
+        parseInt(splitDate[2],10), parseInt(splitTime[0],10), parseInt(splitTime[1],10));
+  }
+
+  function countdown(deadline) {
+    var now = Date.now();
+    var seconds = (deadline.getTime() - now) / 1000;
+    var nbWeeks = 0;
+    var nbDays = 0;
+    var nbHours = 0;
+    var nbMinutes = 0;
+    var nbSeconds = 0;
+    var result = '';
+    if (debug) console.log('seconds: ' + String(seconds));
+
+    if (seconds > week) {
+      nbWeeks = Math.floor(seconds / week);
+      if (debug) console.log('nbWeeks: ' + String(nbWeeks));
+      seconds = seconds - (nbWeeks * week);
+      if (debug) console.log('seconds restantes: ' + String(seconds));
+      result += String(nbWeeks) + ' semaine';
+      if (nbWeeks > 1) {
+        result += 's';
+      }
+    }
+    if (seconds > day) {
+      nbDays = Math.floor(seconds / day);
+      if (debug) console.log('nbDays: ' + String(nbDays));
+      seconds = seconds - (nbDays * day);
+      if (debug) console.log('seconds restantes: ' + String(seconds));
+      result += ' ' + String(nbDays) + ' jour';
+      if (nbDays > 1) {
+        result += 's';
+      }
+      result += ' ';
+    }
+    if (seconds > hour) {
+      nbHours = Math.floor(seconds / hour);
+      if (debug) console.log('nbHours: ' + String(nbHours));
+      seconds = seconds - (nbHours * hour);
+      if (debug) console.log('seconds restantes: ' + String(seconds));
+      if (nbHours < 10) {
+        result += '0' + String(nbHours);
+      } else {
+        result += String(nbHours);
+      }
+    } else {
+      result += '00';
+    }
+    if (seconds > minute) {
+      nbMinutes = Math.floor(seconds / minute);
+      if (debug) console.log('nbMinutes: ' + String(nbMinutes));
+      seconds = seconds - (nbMinutes * minute);
+      if (debug) console.log('seconds restantes: ' + String(seconds));
+      if (nbMinutes < 10) {
+        result += ':0' + String(nbMinutes);
+      } else {
+        result += ':' + String(nbMinutes);
+      }
+    } else {
+      result += ':00';
+    }
+    if (nbDays == 0) {
+      if (debug) console.log('seconds restantes: ' + String(seconds));
+      seconds = Math.ceil(seconds);
+      if (seconds < 10) {
+        result += ':0' + String(seconds);
+      } else {
+        result += ':' + String(seconds);
+      }
+    }
+    if (nbDays > 0) {
+      timeoutId = setTimeout(calculateTime, 60000);
+    } else if (seconds > 0) {
+      $('#countdown span').css('color', 'red');
+      timeoutId = setTimeout(calculateTime, 1000);
+    } else {
+      result = "Terminé";
+    }
+    return result;
+  }
+</script>
+</html>
