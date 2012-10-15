@@ -15,12 +15,10 @@
 **/
 var allCookies = {
   getItem: function (sKey) {
-    if (debug) { console.log('allCookies.getItem('+sKey+')'); }
     if (!sKey || !this.hasItem(sKey)) { return null; }
     return unescape(document.cookie.replace(new RegExp("(?:^|.*;\\s*)" + escape(sKey).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*((?:[^;](?!;))*[^;]?).*"), "$1"));
   },
   setItem: function (sKey, sValue, vEnd, sPath, sDomain, bSecure) {
-    if (debug) { console.log('allCookies.setItem('+sKey+', '+sValue+')'); }
     if (!sKey || /^(?:expires|max\-age|path|domain|secure)$/i.test(sKey)) { return; }
     var sExpires = "";
     if (vEnd) {
@@ -43,12 +41,10 @@ var allCookies = {
     document.cookie = escape(sKey) + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT" + (sPath ? "; path=" + sPath : "");
   },
   hasItem: function (sKey) {
-    if (debug) { console.log('allCookies.hasItem('+sKey+')'); }
     return (new RegExp("(?:^|;\\s*)" + escape(sKey).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=")).test(document.cookie);
   },
   keys: /* optional method: you can safely remove it! */ function () {
-    var aKeys = document.cookie.replace(/((?:^|\s*;)[^\=]+)(?=;|$)|^\s*|\s*(?:\=[^;]*)?(?:\1|$)/g, "").split(/\s*(?:\=[^;]*)?;\s*/);
-    var nIdx;
+    var aKeys = document.cookie.replace(/((?:^|\s*;)[^\=]+)(?=;|$)|^\s*|\s*(?:\=[^;]*)?(?:\1|$)/g, "").split(/\s*(?:\=[^;]*)?;\s*/), nIdx;
     for (nIdx = 0; nIdx < aKeys.length; nIdx++) { aKeys[nIdx] = unescape(aKeys[nIdx]); }
     return aKeys;
   }
