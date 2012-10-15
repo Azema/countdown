@@ -3,10 +3,10 @@
 <head>
   <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8" />
   <title>CountDown</title>
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
-  <script src="cookies.js"></script>
   <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Open+Sans+Condensed:300"></link>
   <link rel="stylesheet" href="jquery.countdown.css"></link>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+  <script src="cookies.js"></script>
   <!--[if lt IE 9]>
     <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
   <![endif]-->
@@ -28,17 +28,12 @@
 </body>
 <script type="text/javascript">
   var debug = false;
-  var deadline;
-  var timeoutId;
-  var $fDate = $('#date');
-  var $fTime = $('#time');
-  var $fBtnStart = $('#btnStart');
-  var $fBtnStop = $('#btnStop');
+  var deadline, timeoutId, positions;
   var minute = 60;
   var hour = minute * 60;
   var day = hour * 24;
   var week = day * 7;
-  var positions;
+  var classStatic = 'digit';
 
   var options = {
     'Weeks': '<span class="separator" style="width:120px;">semaines</span>',
@@ -69,27 +64,20 @@
     positions = elem.find('.position');
   }
 
-  function updateDuo(minor,major,value, classStatic){
-    switchDigit(positions.eq(minor),Math.floor(value/10)%10, classStatic);
-    switchDigit(positions.eq(major),value%10, classStatic);
+  function updateDuo(minor,major,value){
+    switchDigit(positions.eq(minor),Math.floor(value/10)%10);
+    switchDigit(positions.eq(major),value%10);
   }
 
   // Creates an animated transition between the two numbers
-  function switchDigit(position, number, classStatic) {
+  function switchDigit(position, number) {
 
-    classStatic = classStatic || 'digit';
-    if (debug) console.log('class: ' + classStatic);
     var digit = position.find('.digit');
     if (digit.length < 1) {
       digit = position.find('.'+classStatic);
     }
 
-    if(digit.is(':animated')){
-      return false;
-    }
-
-    if(position.data('digit') == number){
-      // We are already showing this number
+    if (digit.is(':animated') || position.data('digit') == number) {
       return false;
     }
 
@@ -112,13 +100,14 @@
       .removeClass('static')
       .animate({top:'2.5em',opacity:0},'fast',function(){
         digit.remove();
-      })
+      });
 
     replacement
       .delay(100)
       .animate({top:0,opacity:1},'fast',function(){
         replacement.addClass('static');
-      });
+    });
+    //replacement = digit = null;
   }
 
   $('#formDisplay').click(function(event) {
@@ -130,6 +119,7 @@
       $form.hide();
       $(this).html('&#x2193;');
     }
+    $form = null;
   });
 
   init($('#countdown'), options);
@@ -138,12 +128,12 @@
     deadline = new Date(allCookies.getItem('deadline'));
     $('#formDisplay').trigger('click');
     $('#countdown').show();
-    tick();
+    countdown();
   }
 
-  $fBtnStart.click(function(event) {
+  $('#btnStart').click(function(event) {
       event.preventDefault();
-      deadline = stringToDate($fDate, $fTime);
+      deadline = new Date($('#date').val().replace(/-/g, '/') + ' ' + $('#time').val());
       if (debug) console.log(deadline);
       allCookies.setItem('deadline', deadline.toString(), Infinity);
       if (debug) console.log(allCookies.hasItem('deadline'));
@@ -154,76 +144,54 @@
       }
       $countdown.show();
       $('#formDisplay').trigger('click');
-      tick();
+      countdown();
   });
 
-  $fBtnStop.click(function(event) {
+  $('#btnStop').click(function(event) {
       event.preventDefault();
       window.clearTimeout(timeoutId);
       allCookies.removeItem('deadline');
       $('#countdown').hide();
       $('#countdown span').remove();
+      positions = null;
   });
 
-  function tick() {
-    //$('#countdown').hide();
-    countdown(deadline);
-    //$('#countdown span').html(result);
-    //$('#countdown').show();
-  }
-
-  function stringToDate($fDate, $fTime) {
-    var splitDate = $fDate.val().replace(/-/g, '/');
-    if (debug) console.log(splitDate + ' ' + $fTime.val());
-    return new Date(splitDate + ' ' + $fTime.val());
-  }
-
-  function countdown(deadline) {
-    var now = new Date();
-    var left = (deadline.getTime() - now.getTime()) / 1000;
-    var nbWeeks = 0;
-    var nbDays = 0;
-    var nbHours = 0;
-    var nbMinutes = 0;
-    var nbSeconds = 0;
-    var nbleft = 0;
-    var classStatic = 'digit';
-
-    if (debug) console.log('left: ' + String(left));
+  function countdown() {
+    var left = (deadline.getTime() - Date.now()) / 1000;
+    var nbWeeks, nbDays, nbHours, nbMinutes;
 
     if (left < 0) {
       left = 0;
-    } else if (left < hour) {
+    } else if (classStatic == 'digit' && left < hour) {
       classStatic = 'digitRed';
+      $('span.digit').removeClass('digit').addClass(classStatic);
+    } else if (classStatic != 'digit' && left > hour) {
+      classStatic = 'digit';
+      $('span.'+classStatic).removeClass(classStatic).addClass('digit');
     }
 
     nbWeeks = Math.floor(left / week);
-    if (debug) console.log('nbWeeks: ' + String(nbWeeks));
-    updateDuo(0, 1, nbWeeks, classStatic);
+    updateDuo(0, 1, nbWeeks);
     left -= nbWeeks * week;
-    if (debug) console.log('left: ' + String(left));
 
     nbDays = Math.floor(left / day);
-    if (debug) console.log('nbDays: ' + String(nbDays));
-    updateDuo(2, 3, nbDays, classStatic);
+    updateDuo(2, 3, nbDays);
     left -= nbDays * day;
-    if (debug) console.log('left: ' + String(left));
 
     nbHours = Math.floor(left / hour);
-    if (debug) console.log('nbHours: ' + String(nbHours));
-    updateDuo(4, 5, nbHours, classStatic);
+    updateDuo(4, 5, nbHours);
     left -= nbHours * hour;
-    if (debug) console.log('left: ' + String(left));
 
     nbMinutes = Math.floor(left / minute);
-    if (debug) console.log('nbMinutes: ' + String(nbMinutes));
-    updateDuo(6, 7, nbMinutes, classStatic);
+    updateDuo(6, 7, nbMinutes);
     left -= nbMinutes * minute;
-    if (debug) console.log('left: ' + String(left));
-    updateDuo(8, 9, Math.floor(left), classStatic);
+    updateDuo(8, 9, Math.floor(left));
+
+    nbWeeks = nbDays = nbHours = nbMinutes = null;
 
     if (left > 0) {
-      timeoutId = setTimeout(tick, 1000);
+      left = null;
+      timeoutId = setTimeout(countdown, 1000);
     }
   }
 </script>
