@@ -233,6 +233,7 @@
     }
 
     nbDays = Math.floor(left / day);
+    left -= nbDays * day;
     if (nbDays > 0) {
       var nbBusinessDays = 0, tmp = nbDays, aDate;
       // Calcul des jours ouvrés
@@ -246,7 +247,6 @@
       nbBusinessDays = tmp = aDate = null;
     }
     updateDuo(0, 1, nbDays);
-    left -= nbDays * day;
 
     nbHours = Math.floor(left / hour);
     updateDuo(2, 3, nbHours);
