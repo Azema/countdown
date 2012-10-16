@@ -28,15 +28,13 @@
 </body>
 <script type="text/javascript">
   var debug = false;
-  var deadline, timeoutId, positions;
+  var deadline, timeoutId, positions, holidays;
   var minute = 60;
   var hour = minute * 60;
   var day = hour * 24;
-  var week = day * 7;
   var classStatic = 'digit';
 
   var options = {
-    'Weeks': '<span class="separator" style="width:120px;">semaines</span>',
     'Days': '<span class="separator" style="width:68px;">jours</span>',
     'Hours': '<span class="countDiv countDiv1"></span>',
     'Minutes': '<span class="countDiv countDiv2"></span>',
@@ -47,7 +45,7 @@
     elem.addClass('countdownHolder');
 
     // Creating the markup inside the container
-    $.each(['Weeks', 'Days','Hours','Minutes','Seconds'],function(i){
+    $.each(['Days','Hours','Minutes','Seconds'],function(i){
       $('<span class="count'+this+'">').html(
         '<span class="position">\
           <span class="digit static">0</span>\
@@ -126,6 +124,7 @@
 
   if (allCookies.hasItem('deadline')) {
     deadline = new Date(allCookies.getItem('deadline'));
+    holidays = calculateHolidays(deadline.getFullYear());
     $('#formDisplay').trigger('click');
     $('#countdown').show();
     countdown();
@@ -134,6 +133,7 @@
   $('#btnStart').click(function(event) {
       event.preventDefault();
       deadline = new Date($('#date').val().replace(/-/g, '/') + ' ' + $('#time').val());
+      holidays = calculateHolidays(deadline.getFullYear());
       if (debug) console.log(deadline);
       allCookies.setItem('deadline', deadline.toString(), Infinity);
       if (debug) console.log(allCookies.hasItem('deadline'));
@@ -154,11 +154,73 @@
       $('#countdown').hide();
       $('#countdown span').remove();
       positions = null;
-  });
+      });
 
+  /**
+   * Retourne les jours fériés de l'année
+   *
+   * @param Number year Année des jours fériés
+   *
+   * @return Array
+   */
+  function calculateHolidays(year)
+  {
+    var holidays = new Array();
+    holidays.push(new Date(year, "00", "01"));
+    holidays.push(new Date(year, "04", "01"));
+    holidays.push(new Date(year, "04", "08"));
+    holidays.push(new Date(year,"06", "14"));
+    holidays.push(new Date(year, "07", "15"));
+    holidays.push(new Date(year, "10", "01"));
+    holidays.push(new Date(year, "10", "11"));
+    holidays.push(new Date(year, "11", "25"));
+
+    var G = year%19;
+    var C = Math.floor(year/100);
+    var H = (C - Math.floor(C/4) - Math.floor((8*C+13)/25) + 19*G + 15)%30;
+    var I = H - Math.floor(H/28)*(1 - Math.floor(H/28)*Math.floor(29/(H + 1))*Math.floor((21 - G)/11));
+    var J = (year*1 + Math.floor(year/4) + I + 2 - C + Math.floor(C/4))%7;
+    var L = I - J;
+    var MoisPaques = 3 + Math.floor((L + 40)/44);
+    var JourPaques = L + 28 - 31*Math.floor(MoisPaques/4);
+    holidays.push(new Date(year, MoisPaques-1, JourPaques));
+    holidays.push(new Date(year, MoisPaques-1, JourPaques+1));
+    holidays.push(new Date(year, MoisPaques-1, JourPaques+39));
+    holidays.push(new Date(year, MoisPaques-1, JourPaques+49));
+    holidays.push(new Date(year, MoisPaques-1, JourPaques+50));
+
+    // Nettoyage
+    year = G = C = H = I = J = L = MoisPaques = JourPaques = null;
+
+    return holidays;
+  }
+
+  /**
+   * Indique si la date fournit en paramètre est un jour férié
+   *
+   * @param Date aDate La date de comparaison
+   *
+   * @return boolean
+   */
+  function isHoliday(aDate) {
+    for (var i=0; i<holidays.length; i++) {
+      if (aDate.getMonth() == holidays[i].getMonth()
+          && aDate.getFullYear() == holidays[i].getFullYear()
+          && aDate.getDate() == holidays[i].getDate()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Calcul du temps restant entre maintenant et la deadline
+   *
+   * @return void
+   */
   function countdown() {
     var left = (deadline.getTime() - Date.now()) / 1000;
-    var nbWeeks, nbDays, nbHours, nbMinutes;
+    var nbDays, nbHours, nbMinutes;
 
     if (left < 0) {
       left = 0;
@@ -170,24 +232,32 @@
       $('span.'+classStatic).removeClass(classStatic).addClass('digit');
     }
 
-    nbWeeks = Math.floor(left / week);
-    updateDuo(0, 1, nbWeeks);
-    left -= nbWeeks * week;
-
     nbDays = Math.floor(left / day);
-    updateDuo(2, 3, nbDays);
+    if (nbDays > 0) {
+      var nbBusinessDays = 0, tmp = nbDays, aDate;
+      // Calcul des jours ouvrés
+      for (; tmp>0; tmp--) {
+        aDate = new Date(deadline.getTime()-((tmp*day)*1000));
+        if (aDate.getDay() != 0 && aDate.getDay() != 6 && !isHoliday(aDate)) {
+          nbBusinessDays++;
+        }
+      }
+      nbDays = nbBusinessDays;
+      nbBusinessDays = tmp = aDate = null;
+    }
+    updateDuo(0, 1, nbDays);
     left -= nbDays * day;
 
     nbHours = Math.floor(left / hour);
-    updateDuo(4, 5, nbHours);
+    updateDuo(2, 3, nbHours);
     left -= nbHours * hour;
 
     nbMinutes = Math.floor(left / minute);
-    updateDuo(6, 7, nbMinutes);
+    updateDuo(4, 5, nbMinutes);
     left -= nbMinutes * minute;
-    updateDuo(8, 9, Math.floor(left));
+    updateDuo(6, 7, Math.floor(left));
 
-    nbWeeks = nbDays = nbHours = nbMinutes = null;
+    nbDays = nbHours = nbMinutes = null;
 
     if (left > 0) {
       left = null;
